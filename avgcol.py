@@ -18,12 +18,15 @@ with open(args.filename[0], 'r') as f:
         lines.append(line)
 
 rows = len(lines)
+processed_rows = 0
 columns = max([len(line) for line in lines])
 sums = [0]*columns
 
 for line in lines:
-    for i in range(columns):
-        sums[i]+=int(line[i])
+    if len(line) == columns:
+        processed_rows += 1
+        for i in range(columns):
+            sums[i]+=int(line[i])
 
-averages = [str(x/rows) for x in sums]
+averages = [str(x/processed_rows) for x in sums]
 print args.delim.join(averages)
