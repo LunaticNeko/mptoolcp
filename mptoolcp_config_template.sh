@@ -1,23 +1,11 @@
 #!/bin/bash
-
-# the correct config file name is mptoolcp_config.sh
-# all variables are required
-
-# The address of the server
-server=10.0.0.1
-
-# The number of runs to execute per configuration
+server=10.0.1.1
 tries=10
-
-# The length of time for each iperf run (seconds)
 testtime=10
-
-# The number of maximum iperf threads to run in parallel
-parallels=1
-
-# Should we collect data in intervals? And the period of the interval.
+parallels=2
 use_interval=1
-iperf_interval=0.5
-
-# Finally, give the prefix for the CSV files.
-prefix=smoci6
+iperf_interval=1
+file_prefix=test
+host_prefix="host-"
+nhosts=6
+host=1 #FAILSAFE/UNSAFE: To prevent catastrophes, $host variable refs shall default to this.
