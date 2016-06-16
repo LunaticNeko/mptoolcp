@@ -96,11 +96,11 @@ run_iperf(){
     else 
       iperf -c $server -t $iperf_t -i $iperf_i -y C -P $iperf_p | grep ',\-1,' > $filename
   fi
-  sleep 2
+  sleep 1
 }
 
 #
-# process_logs(prefix STR, ext STR, delete_original BOOL)
+# process_logs(prefix STR, start INT, end INT, ext STR delete_original BOOL)
 #
 #  Processes log files generated with run_iperf command.
 #  Two files are produced: all and avg.
@@ -118,17 +118,21 @@ run_iperf(){
 #
 process_logs(){
     prefix=$1
-    ext=$2
-    delete_original=$3
+    start=$2
+    end=$3
+    ext=$4
+    delete_original=$5
     files=`ls ${prefix}*.$ext`
     echo "Procesing ${files}"
-    for f in files; do
-        cut -d, -f9 $k | tr "\n" "\t" | sed 's/$/\n/' >> $prefix.all.$ext
-        sed -i 's/[ \t]*$//' $prefix.all.$ext
-        python avgcol.py $prefix.all.$ext | tr "\t" "\n" > $prefix.avg.$ext
-    done
+    #for i in `seq ${start} ${end}`; do
+    #    cut -d, -f9 ${prefix}$i.${ext} | tr "\n" "\t" | sed 's/$/\n/' >> $prefix.all.$ext
+    #done
+    #sed -i 's/[ \t]*$//' $prefix.all.$ext
+    python avgcol.py --pctrim 33 $prefix.all.$ext | tr "\t" "\n" > $prefix.avg.$ext
     if [ $delete_original -eq 1 ]; then
-        rm -f files
+        for i in `seq ${start} ${end}`; do
+            rm -f ${prefix}$i.${ext}
+        done
     fi
 }
 
@@ -137,15 +141,19 @@ echo 'Backing up MPTCP Option'
 original_mptcp_setting=`sysctl -n net.mptcp.mptcp_enabled`
 original_ndiffports=`sysctl -n net.mptcp.mptcp_ndiffports`
 
-for delay in `seq 0 10 150`;do
-    set_tc_delay 1 2 ${delay}
-    for ports in `seq 1 8`; do
-        set_mptcp_ndiffports ${ports}
+for delay in ${delays};do
+    #set_tc_delay 1 2 ${delay}
+    set_tc_delay 1 5 ${delay}
+    for port in ${ports}; do
+        set_mptcp_ndiffports ${port}
         for i in `seq 1 $tries`; do
-            echo "Testcase: ${delay}ms, n=${ports}, #$i"
-            run_iperf $iperf_interval $testtime 1 $server $file_prefix-$delay-$ports-$i.csv
+            echo -n "Testcase: ${delay}ms, n=${port}, #$i ... "
+            run_iperf $iperf_interval $testtime 1 $server $file_prefix-$delay-$port-$i.csv
+            echo $(cut -d, -f9 $file_prefix-$delay-$port-$i.csv | tail -n 1)
+            cut -d, -f9 $file_prefix-$delay-$port-$i.csv | tr "\n" "\t" | sed 's/$/\n/' >> $file_prefix-$delay-$port-.all.csv
+            sed -i 's/[ \t]*$//' $file_prefix-$delay-$port-.all.csv
         done
-        process_logs $file_prefix-$delay-$ports- csv 1
+        process_logs "$file_prefix-$delay-$port-" 1 $tries csv 1
     done
 done
 
