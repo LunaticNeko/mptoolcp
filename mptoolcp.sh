@@ -10,50 +10,6 @@ parent_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
 source ${parent_path}/mptoolcp_config.sh
 source ${parent_path}/../../setup_gre/setup_gre.sh
 
-# run(cmd)
-#  Executes the specified command if dryrun is not set
-#
-#  Params:
-#  cmd - The command to be executed
-#
-#run(){
-#  cmd="$1"
-#  echo "$cmd"
-#  if [ $dryrun -eq 0 ]; then
-#      eval "$cmd"
-#  fi
-#}
-
-# set_tc_delay(from, to, lat_ms)
-#
-#  Sets TAP interface to have a specific amount of delay
-#
-#  Params:
-#  from   - the number of source host
-#  to     - the number of destination host
-#  lat_ms - latency in ms
-#
-#set_tc_delay(){
-#  from=$1
-#  to=$2
-#  lat_ms=$3
-#  cmd="ssh root@${host_prefix}${from} tc qdisc del dev tap${to} root netem; tc qdisc add dev tap${to} root netem delay ${lat_ms}ms"
-#  run "$cmd"
-#}
-
-# clear_tc(from, to)
-#  Clears tc settings from $1 to $2
-#
-#  from - Source Host
-#  to   - Destnation Host
-#
-#clear_tc(){
-#  from=$1
-#  to=$2
-#  cmd="ssh root@${host_prefix}${from} tc qdisc del dev tap${to}"
-#  run "$cmd"
-#}
-
 #
 # set_mptcp_enabled(setting BOOL)
 #
