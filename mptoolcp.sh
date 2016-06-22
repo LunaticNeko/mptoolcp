@@ -3,7 +3,12 @@
 # These are defaults to trap some errors. Do not edit.
 dryrun=1
 
-source mptoolcp_config.sh
+mptoolcp_dir="$(dirname "$0")"
+setup_gre_dir="$(dirname "$0")"
+parent_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
+
+source ${parent_path}/mptoolcp_config.sh
+source ${parent_path}/../../setup_gre/setup_gre.sh
 
 # run(cmd)
 #  Executes the specified command if dryrun is not set
@@ -11,13 +16,13 @@ source mptoolcp_config.sh
 #  Params:
 #  cmd - The command to be executed
 #
-run(){
-  cmd="$1"
-  echo "$cmd"
-  if [ $dryrun -eq 0 ]; then
-      eval "$cmd"
-  fi
-}
+#run(){
+#  cmd="$1"
+#  echo "$cmd"
+#  if [ $dryrun -eq 0 ]; then
+#      eval "$cmd"
+#  fi
+#}
 
 # set_tc_delay(from, to, lat_ms)
 #
@@ -28,13 +33,13 @@ run(){
 #  to     - the number of destination host
 #  lat_ms - latency in ms
 #
-set_tc_delay(){
-  from=$1
-  to=$2
-  lat_ms=$3
-  cmd="ssh root@${host_prefix}${from} tc qdisc del dev tap${to} root netem; tc qdisc add dev tap${to} root netem delay ${lat_ms}ms"
-  run "$cmd"
-}
+#set_tc_delay(){
+#  from=$1
+#  to=$2
+#  lat_ms=$3
+#  cmd="ssh root@${host_prefix}${from} tc qdisc del dev tap${to} root netem; tc qdisc add dev tap${to} root netem delay ${lat_ms}ms"
+#  run "$cmd"
+#}
 
 # clear_tc(from, to)
 #  Clears tc settings from $1 to $2
@@ -42,12 +47,12 @@ set_tc_delay(){
 #  from - Source Host
 #  to   - Destnation Host
 #
-clear_tc(){
-  from=$1
-  to=$2
-  cmd="ssh root@${host_prefix}${from} tc qdisc del dev tap${to}"
-  run "$cmd"
-}
+#clear_tc(){
+#  from=$1
+#  to=$2
+#  cmd="ssh root@${host_prefix}${from} tc qdisc del dev tap${to}"
+#  run "$cmd"
+#}
 
 #
 # set_mptcp_enabled(setting BOOL)
@@ -100,7 +105,7 @@ run_iperf(){
 }
 
 #
-# process_logs(prefix STR, start INT, end INT, ext STR delete_original BOOL)
+# process_logs(prefix STR, start INT, end INT, ext STR, delete_original BOOL)
 #
 #  Processes log files generated with run_iperf command.
 #  Two files are produced: all and avg.
@@ -140,13 +145,14 @@ process_logs(){
 echo 'Backing up MPTCP Option'
 original_mptcp_setting=`sysctl -n net.mptcp.mptcp_enabled`
 original_ndiffports=`sysctl -n net.mptcp.mptcp_ndiffports`
+prefix=${host_prefix}
 
-for delay in ${delays};do
-    #set_tc_delay 1 2 ${delay}
-    set_tc_delay 1 5 ${delay}
+for delay in ${delays}; do
+    set_tc_duplex 1 5 ${delay} 100000
     for port in ${ports}; do
         set_mptcp_ndiffports ${port}
         for i in `seq 1 $tries`; do
+            # Run a testcase, grab only 
             echo -n "Testcase: ${delay}ms, n=${port}, #$i ... "
             run_iperf $iperf_interval $testtime 1 $server $file_prefix-$delay-$port-$i.csv
             echo $(cut -d, -f9 $file_prefix-$delay-$port-$i.csv | tail -n 1)
@@ -156,32 +162,6 @@ for delay in ${delays};do
         process_logs "$file_prefix-$delay-$port-" 1 $tries csv 1
     done
 done
-
-
-
-#for i in 0 1
-#do
-#  set_mptcp_enabled $i
-#  for j in `seq 1 $parallels`
-#  do
-#    for k in `seq 1 $tries`
-#    do
-#      echo "Testcase: mptcp $i, threads $j, run $k"
-#      run_iperf $iperf_interval $testtime $j $i 1 $server $file_prefix-$i-$j-$k.csv
-#    done
-#    #echo $i $j
-#    cat /dev/null > $file_prefix-$i-$j.all.csv
-#    for k in $file_prefix-$i-$j-*.csv
-#    do
-#        #tr "\n" "\t"
-#        #echo $k
-#        cut -d, -f9 $k | tr "\n" "\t" | sed 's/$/\n/' >> $file_prefix-$i-$j.all.csv ;
-#        sed -i 's/[ \t]*$//' $file_prefix-$i-$j.all.csv
-#        python avgcol.py $file_prefix-$i-$j.all.csv | tr '\t' '\n' > $file_prefix-$i-$j.avg.csv
-#    done
-#    rm -f $file_prefix-$i-$j-*.csv
-#  done
-#done
 
 # restore old MPTCP setting
 echo 'Restoring MPTCP Option'
