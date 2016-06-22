@@ -7,7 +7,7 @@ mptoolcp_dir="$(dirname "$0")"
 setup_gre_dir="$(dirname "$0")"
 parent_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
 
-source ${parent_path}/mptoolcp_config.sh
+#source ${parent_path}/mptoolcp_config.sh
 source ${parent_path}/../../setup_gre/setup_gre.sh
 
 #
@@ -104,18 +104,20 @@ original_ndiffports=`sysctl -n net.mptcp.mptcp_ndiffports`
 prefix=${host_prefix}
 
 for delay in ${delays}; do
-    set_tc_duplex 1 5 ${delay} 100000
-    for port in ${ports}; do
-        set_mptcp_ndiffports ${port}
-        for i in `seq 1 $tries`; do
-            # Run a testcase, grab only 
-            echo -n "Testcase: ${delay}ms, n=${port}, #$i ... "
-            run_iperf $iperf_interval $testtime 1 $server $file_prefix-$delay-$port-$i.csv
-            echo $(cut -d, -f9 $file_prefix-$delay-$port-$i.csv | tail -n 1)
-            cut -d, -f9 $file_prefix-$delay-$port-$i.csv | tr "\n" "\t" | sed 's/$/\n/' >> $file_prefix-$delay-$port-.all.csv
-            sed -i 's/[ \t]*$//' $file_prefix-$delay-$port-.all.csv
+    for bandwidth in ${bandwidths}; do
+        set_tc_duplex 1 5 ${delay} ${bandwidth}
+        for port in ${ports}; do
+            set_mptcp_ndiffports ${port}
+            for i in `seq 1 $tries`; do
+                # Run a testcase, grab only what's needed out and print it into a csv 
+                echo -n "Testcase: ${delay}ms ${bandwidth}kbps, n=${port}, #$i ... "
+                run_iperf $iperf_interval $testtime 1 $server $file_prefix-$delay-$bandwidth-$port-$i.csv
+                echo $(cut -d, -f9 $file_prefix-$delay-$bandwidth-$port-$i.csv | tail -n 1)
+                cut -d, -f9 $file_prefix-$delay-$bandwidth-$port-$i.csv | tr "\n" "\t" | sed 's/$/\n/' >> $file_prefix-$delay-$port-.all.csv
+                sed -i 's/[ \t]*$//' $file_prefix-$delay-$bandwidth-$port-.all.csv
+            done
+            process_logs "$file_prefix-$delay-$bandwidth-$port-" 1 $tries csv 1
         done
-        process_logs "$file_prefix-$delay-$port-" 1 $tries csv 1
     done
 done
 
